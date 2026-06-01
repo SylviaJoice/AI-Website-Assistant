@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Website Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="page-title">
+        <h1>AI Website Assistant</h1>
+        <p>Paste any website URL and chat with that page</p>
+    </div>
+
+    <div class="app-wrapper">
+
+        <form method="POST" class="url-card">
+            <label>Website URL</label>
+            <input
+                type="text"
+                name="url"
+                placeholder="Paste website URL here..."
+                value="{{ url }}"
+                required
+            >
+            {% if url %}
+           <div class="website-status">
+            <span></span>
+             Website loaded: {{ url }}
+            </div>
+            {% endif %}
+            <div class="chat-container">
+
+                <div class="chat-box">
+    {% if messages %}
+        {% for message in messages %}
+            {% if message.sender == "You" %}
+                <div class="message user-message">
+                    <strong>You</strong>
+                    <p>{{ message.text }}</p>
+                </div>
+            {% else %}
+                <div class="message bot-message">
+                    <strong>Bot</strong>
+                    <div>{{ message.text | safe }}</div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <div class="message bot-message">
+            <strong>Bot</strong>
+            <div>Hello! Paste a URL and ask me anything about that website.</div>
+        </div>
+    {% endif %}
+</div>
+
+                <div class="chat-actions">
+                    <a href="/clear" class="clear-btn">Clear Chat</a>
+                </div>
+
+                <div class="chat-form">
+                    <input
+                        type="text"
+                        name="question"
+                        placeholder="Ask your question..."
+                        required
+                    >
+
+                    <button type="submit">Send</button>
+                </div>
+
+            </div>
+        </form>
+
+    </div>
+  <script>
+    const chatBox = document.querySelector(".chat-box");
+
+    if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+</body>
+</html>
