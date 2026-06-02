@@ -21,9 +21,14 @@ client = OpenAI(
 
 def get_website_text(url):
     print("Reading website now...")
-    response = requests.get(url, timeout=10)
-    soup = BeautifulSoup(response.text, "html.parser")
+    headers = {
+    "User-Agent": "Mozilla/5.0"
+      }
 
+    response = requests.get(url, headers=headers, timeout=10)
+    soup = BeautifulSoup(response.text, "html.parser")
+    print("HTML LENGTH:", len(response.text))
+    print(response.text[:500])
     for tag in soup(["script", "style"]):
         tag.decompose()
 
@@ -53,26 +58,28 @@ def get_website_text(url):
     return combined_text[:20000]
 
 def get_important_links(base_url, soup):
-    important_words = [
-        "admission", "apply", "register", "academics",
-        "courses", "programs", "placement", "about",
-        "contact", "fee", "scholarship"
-    ]
-
     links = []
 
     for a in soup.find_all("a", href=True):
-        link_text = a.get_text(" ", strip=True).lower()
-        href = a["href"].lower()
+        href = a["href"].strip()
 
-        if any(word in link_text or word in href for word in important_words):
-            full_url = urljoin(base_url, a["href"])
+        if (
+            href.startswith("#")
+            or href.startswith("javascript:")
+            or href.startswith("mailto:")
+            or href.startswith("tel:")
+        ):
+            continue
 
-            if urlparse(full_url).netloc == urlparse(base_url).netloc:
-                if full_url not in links:
-                    links.append(full_url)
+        full_url = urljoin(base_url, href)
 
-    return links[:5]
+        if urlparse(full_url).netloc == urlparse(base_url).netloc:
+            clean_url = full_url.split("#")[0]
+
+            if clean_url not in links:
+                links.append(clean_url)
+
+    return links[:10]
 
 def ask_ai(website_text, question):
     prompt = f"""
