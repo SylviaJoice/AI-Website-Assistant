@@ -4,6 +4,7 @@
     <title>AI Website Assistant</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
 
     <div class="page-title">
@@ -13,71 +14,183 @@
 
     <div class="app-wrapper">
 
-        <form method="POST" class="url-card">
-            <label>Website URL</label>
+        <!-- URL + PDF section (NO FORM ANYMORE) -->
+        <div class="url-card">
+
+            <label>Website URL (Optional)</label>
             <input
                 type="text"
                 name="url"
+                id="url"
                 placeholder="Paste website URL here..."
                 value="{{ url }}"
-                required
             >
+
+            <label style="margin-top:15px;">Upload PDF (Optional)</label>
+            <input
+            type="file"
+            name="pdf_file"
+            id="pdf_file"
+            accept=".pdf"
+            onchange="uploadPDF()"
+            >
+
             {% if url %}
-           <div class="website-status">
-            <span></span>
-             Website loaded: {{ url }}
+            <div class="website-status">
+                <span></span>
+                Website loaded: {{ url }}
             </div>
             {% endif %}
+
             <div class="chat-container">
 
-                <div class="chat-box">
-    {% if messages %}
-        {% for message in messages %}
-            {% if message.sender == "You" %}
-                <div class="message user-message">
-                    <strong>You</strong>
-                    <p>{{ message.text }}</p>
-                </div>
-            {% else %}
-                <div class="message bot-message">
-                    <strong>Bot</strong>
-                    <div>{{ message.text | safe }}</div>
-                </div>
-            {% endif %}
-        {% endfor %}
-    {% else %}
-        <div class="message bot-message">
-            <strong>Bot</strong>
-            <div>Hello! Paste a URL and ask me anything about that website.</div>
-        </div>
-    {% endif %}
-</div>
+                <!-- CHAT BOX -->
+                <div class="chat-box" id="chat-box">
 
+                    {% if messages %}
+                        {% for message in messages %}
+                            {% if message.sender == "You" %}
+                                <div class="message user-message">
+                                    <strong>You</strong>
+                                    <p>{{ message.text }}</p>
+                                </div>
+                            {% else %}
+                                <div class="message bot-message">
+                                    <strong>Bot</strong>
+                                    <div>{{ message.text | safe }}</div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="message bot-message">
+                            <strong>Bot</strong>
+                            <div>Hello! Paste a URL and ask me anything about that website.</div>
+                        </div>
+                    {% endif %}
+
+                </div>
+
+                <!-- CLEAR BUTTON -->
                 <div class="chat-actions">
                     <a href="/clear" class="clear-btn">Clear Chat</a>
                 </div>
 
+                <!-- CHAT INPUT -->
                 <div class="chat-form">
                     <input
                         type="text"
-                        name="question"
+                        id="question"
                         placeholder="Ask your question..."
-                        required
                     >
 
-                    <button type="submit">Send</button>
+                    <button type="button" onclick="sendMessage()">Send</button>
                 </div>
 
             </div>
-        </form>
+        </div>
 
     </div>
-  <script>
-    const chatBox = document.querySelector(".chat-box");
 
-    if (chatBox) {
-        chatBox.scrollTop = chatBox.scrollHeight;
+<script>
+async function uploadPDF() {
+    const fileInput = document.getElementById("pdf_file");
+
+    if (!fileInput.files.length) {
+        return;
     }
+
+    const formData = new FormData();
+    formData.append("pdf_file", fileInput.files[0]);
+
+    try {
+        const response = await fetch("/upload_pdf", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            console.log("PDF uploaded successfully");
+        } else {
+            console.log("PDF upload failed");
+        }
+
+    } catch (error) {
+        console.log("Upload error:", error);
+    }
+}
+async function sendMessage() {
+    const questionInput = document.getElementById("question");
+    const question = questionInput.value.trim();
+    const url = document.getElementById("url").value;
+
+    if (!question) return;
+
+    const chatBox = document.getElementById("chat-box");
+
+    // show user message
+    chatBox.innerHTML += `
+        <div class="message user-message">
+            <strong>You</strong>
+            <p>${question}</p>
+        </div>
+    `;
+
+    questionInput.value = "";
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    try {
+        const response = await fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                question: question,
+                url: url
+            })
+        });
+
+        const data = await response.json();
+        console.log("BACKEND:", data);
+
+        if (data.answer) {
+            chatBox.innerHTML += `
+                <div class="message bot-message">
+                    <strong>Bot</strong>
+                    <div>${data.answer}</div>
+                </div>
+            `;
+        } else {
+            chatBox.innerHTML += `
+                <div class="message bot-message">
+                    <strong>Bot</strong>
+                    <div>Sorry, no response from server.</div>
+                </div>
+            `;
+        }
+
+    } catch (error) {
+        console.error(error);
+        chatBox.innerHTML += `
+            <div class="message bot-message">
+                <strong>Bot</strong>
+                <div>Error connecting to server.</div>
+            </div>
+        `;
+    }
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Enter key support
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && document.activeElement.id === "question") {
+        sendMessage();
+    }
+});
 </script>
+
 </body>
 </html>
